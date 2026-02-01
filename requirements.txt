@@ -1,0 +1,14 @@
+# Web и API
+gradio>=4.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Работа с изображениями
+pillow>=10.0.0
+opencv-python>=4.8.0
+
+# AI/ML
+openai>=1.0.0
+
+# Опционально (если будете использовать Replicate)
+replicate>=0.20.0
