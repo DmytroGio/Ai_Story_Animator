@@ -99,23 +99,13 @@ Generate the JSON response now:"""
     def generate_image_prompts(self, story_data, style="cinematic"):
         """
         Конвертирует сцены в промпты для Stable Diffusion
-
-        Args:
-            story_data (dict): Данные сценария из generate_story_scenes
-            style (str): Художественный стиль (cinematic, anime, cartoon, realistic)
-
-        Returns:
-            list: Список промптов для генерации изображений
+        Использует улучшенные предустановки стилей
         """
+        from utils import StylePresets
 
-        style_presets = {
-            "cinematic": "cinematic lighting, film grain, dramatic composition, high quality, 8k",
-            "anime": "anime style, vibrant colors, detailed, studio ghibli inspired, high quality",
-            "cartoon": "cartoon style, bold colors, clean lines, pixar style, detailed",
-            "realistic": "photorealistic, ultra detailed, professional photography, 8k resolution"
-        }
-
-        style_suffix = style_presets.get(style, style_presets["cinematic"])
+        # Получаем предустановку стиля
+        style_preset = StylePresets.get_style(style)
+        style_suffix = style_preset['sd_suffix']
 
         prompts = []
         scenes = story_data.get("scenes", [])
@@ -125,12 +115,13 @@ Generate the JSON response now:"""
             base_description = scene.get("description", "")
             mood = scene.get("mood", "")
 
+            # Формируем полный промпт
             full_prompt = f"{base_description}, {mood} mood, {style_suffix}"
 
             prompts.append({
                 "scene_number": scene.get("scene_number"),
                 "prompt": full_prompt,
-                "negative_prompt": "blurry, low quality, distorted, deformed, ugly, bad anatomy"
+                "negative_prompt": "blurry, low quality, distorted, deformed, ugly, bad anatomy, watermark, signature, text"
             })
 
         return prompts
