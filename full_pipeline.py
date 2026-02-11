@@ -7,74 +7,74 @@ from pathlib import Path
 
 class AIStoryAnimator:
     def __init__(self):
-        """Инициализация всех компонентов пайплайна"""
-        print("🎬 Инициализация AI Story Animator...\n")
+        """Initialize all pipeline components"""
+        print("🎬 Initializing AI Story Animator...\n")
 
         self.llm = LLMGenerator()
         self.image_gen = ComfyUIGenerator()
         self.video_creator = VideoCreator(fps=24, transition_duration=1.0)
 
-        print("\n✅ Все компоненты готовы!\n")
+        print("\n✅ All components ready!\n")
 
     def create_story_animation(self, story_idea, num_scenes=5,
                                style='cinematic', project_name=None,
                                scene_duration=4.0, color_grade='warm'):
         """
-        Полный пайплайн: идея → сценарий → изображения → видео
+        Full pipeline: idea → script → images → video
 
         Args:
-            story_idea (str): Идея истории от пользователя
-            num_scenes (int): Количество сцен (3-7 оптимально)
-            style (str): Художественный стиль (cinematic, anime, cartoon)
-            project_name (str): Название проекта для файлов
-            scene_duration (float): Длительность каждой сцены в секундах
-            color_grade (str): Цветокоррекция (warm, cool, vintage, cyberpunk)
+            story_idea (str): Story idea from user
+            num_scenes (int): Number of scenes (3-7 optimal)
+            style (str): Art style (cinematic, anime, cartoon)
+            project_name (str): Project name for files
+            scene_duration (float): Duration of each scene in seconds
+            color_grade (str): Color grading (warm, cool, vintage, cyberpunk)
         """
         start_time = time.time()
 
         print("=" * 70)
-        print("🎬 AI STORY ANIMATOR - ПОЛНЫЙ ПАЙПЛАЙН")
+        print("🎬 AI STORY ANIMATOR - FULL PIPELINE")
         print("=" * 70)
-        print(f"\n💡 Идея: {story_idea}")
-        print(f"🎨 Стиль: {style}")
-        print(f"🎬 Сцен: {num_scenes}")
-        print(f"⏱️  Длительность сцены: {scene_duration}s")
-        print(f"🌈 Цветокоррекция: {color_grade}\n")
+        print(f"\n💡 Idea: {story_idea}")
+        print(f"🎨 Style: {style}")
+        print(f"🎬 Scenes: {num_scenes}")
+        print(f"⏱️  Scene duration: {scene_duration}s")
+        print(f"🌈 Color grading: {color_grade}\n")
 
-        # Генерируем название проекта
+        # Generate project name
         if project_name is None:
             project_name = f"story_{int(time.time())}"
 
-        # ==================== ЭТАП 1: LLM ====================
+        # ==================== STAGE 1: LLM ====================
         print("\n" + "=" * 70)
-        print("📝 ЭТАП 1/3: Генерация сценария через LLM")
+        print("📝 STAGE 1/3: Generating script through LLM")
         print("=" * 70 + "\n")
 
         story_data = self.llm.generate_story_scenes(story_idea, num_scenes=num_scenes)
 
         if not story_data:
-            print("❌ Ошибка генерации сценария")
+            print("❌ Script generation error")
             return None
 
         story_title = story_data.get('title', 'Untitled Story')
         scenes = story_data.get('scenes', [])
 
-        print(f"\n✅ Сценарий готов: '{story_title}'")
-        print(f"📖 Сцен сгенерировано: {len(scenes)}\n")
+        print(f"\n✅ Script ready: '{story_title}'")
+        print(f"📖 Scenes generated: {len(scenes)}\n")
 
-        # Показываем сцены
+        # Display scenes
         for scene in scenes:
-            print(f"  Сцена {scene['scene_number']}: {scene['description'][:60]}...")
+            print(f"  Scene {scene['scene_number']}: {scene['description'][:60]}...")
 
-        # ==================== ЭТАП 2: IMAGE GEN ====================
+        # ==================== STAGE 2: IMAGE GEN ====================
         print("\n" + "=" * 70)
-        print("🎨 ЭТАП 2/3: Генерация изображений через ComfyUI")
+        print("🎨 STAGE 2/3: Generating images through ComfyUI")
         print("=" * 70 + "\n")
 
-        # Создаём промпты для SD
+        # Create prompts for SD
         image_prompts = self.llm.generate_image_prompts(story_data, style=style)
 
-        # Генерируем изображения
+        # Generate images
         generated_images = self.image_gen.generate_scene_images(
             prompts_data=image_prompts,
             style=style,
@@ -86,17 +86,17 @@ class AIStoryAnimator:
         )
 
         if not generated_images:
-            print("❌ Ошибка генерации изображений")
+            print("❌ Image generation error")
             return None
 
-        print(f"\n✅ Изображения готовы: {len(generated_images)}/{num_scenes}")
+        print(f"\n✅ Images ready: {len(generated_images)}/{num_scenes}")
 
-        # ==================== ЭТАП 3: VIDEO ====================
+        # ==================== STAGE 3: VIDEO ====================
         print("\n" + "=" * 70)
-        print("🎥 ЭТАП 3/3: Создание кинематографического видео")
+        print("🎥 STAGE 3/3: Creating cinematic video")
         print("=" * 70 + "\n")
 
-        # Создаём видео
+        # Create video
         video_path = self.video_creator.create_video(
             image_paths=[img['filepath'] for img in generated_images],
             output_filename=f"{project_name}_animation.mp4",
@@ -107,21 +107,21 @@ class AIStoryAnimator:
             transition_type='zoom_blur'
         )
 
-        # ==================== РЕЗУЛЬТАТЫ ====================
+        # ==================== RESULTS ====================
         end_time = time.time()
         total_time = end_time - start_time
 
         print("\n" + "=" * 70)
-        print("🎉 ПАЙПЛАЙН УСПЕШНО ЗАВЕРШЁН!")
+        print("🎉 PIPELINE COMPLETED SUCCESSFULLY!")
         print("=" * 70)
-        print(f"\n📖 История: {story_title}")
-        print(f"🎬 Сцен: {len(scenes)}")
-        print(f"🖼️  Изображений: {len(generated_images)}")
-        print(f"🎥 Видео: {video_path}")
-        print(f"⏱️  Общее время: {total_time:.1f}s ({total_time / 60:.1f} мин)")
-        print(f"\n📁 Результаты:")
-        print(f"  - Изображения: outputs/images/{project_name}_scene_*.png")
-        print(f"  - Видео: {video_path}")
+        print(f"\n📖 Story: {story_title}")
+        print(f"🎬 Scenes: {len(scenes)}")
+        print(f"🖼️  Images: {len(generated_images)}")
+        print(f"🎥 Video: {video_path}")
+        print(f"⏱️  Total time: {total_time:.1f}s ({total_time / 60:.1f} min)")
+        print(f"\n📁 Results:")
+        print(f"  - Images: outputs/images/{project_name}_scene_*.png")
+        print(f"  - Video: {video_path}")
         print("=" * 70 + "\n")
 
         return {
@@ -133,57 +133,57 @@ class AIStoryAnimator:
         }
 
 
-# ==================== ИНТЕРАКТИВНЫЙ РЕЖИМ ====================
+# ==================== INTERACTIVE MODE ====================
 def interactive_mode():
-    """Интерактивный режим для пользователя"""
+    """Interactive mode for user"""
     print("\n" + "=" * 70)
-    print("🎬 AI STORY ANIMATOR - Интерактивный режим")
+    print("🎬 AI STORY ANIMATOR - Interactive Mode")
     print("=" * 70 + "\n")
 
     animator = AIStoryAnimator()
 
-    # Получаем идею от пользователя
-    print("\n💡 Введите идею для вашей анимированной истории:")
-    print("   (Например: 'A robot falls in love with a star')")
+    # Get idea from user
+    print("\n💡 Enter your idea for an animated story:")
+    print("   (For example: 'A robot falls in love with a star')")
     story_idea = input("\n> ")
 
     if not story_idea.strip():
         story_idea = "A lonely robot discovers a small plant in a post-apocalyptic world"
-        print(f"\n✨ Используем пример: {story_idea}")
+        print(f"\n✨ Using example: {story_idea}")
 
-    # Количество сцен
-    print("\n🎬 Сколько сцен создать? (рекомендуется 3-5)")
+    # Number of scenes
+    print("\n🎬 How many scenes to create? (recommended 3-5)")
     try:
         num_scenes = int(input("> ") or "3")
-        num_scenes = max(2, min(num_scenes, 10))  # Ограничение 2-10
+        num_scenes = max(2, min(num_scenes, 10))  # Limit 2-10
     except:
         num_scenes = 3
-        print(f"✨ Используем по умолчанию: {num_scenes}")
+        print(f"✨ Using default: {num_scenes}")
 
-    # Стиль
-    print("\n🎨 Выберите стиль:")
-    print("   1. Cinematic (кинематографический)")
-    print("   2. Anime (аниме)")
-    print("   3. Cartoon (мультяшный)")
-    print("   4. Realistic (реалистичный)")
+    # Style
+    print("\n🎨 Choose style:")
+    print("   1. Cinematic")
+    print("   2. Anime")
+    print("   3. Cartoon")
+    print("   4. Realistic")
 
     style_choice = input("\n> ") or "1"
     styles = {'1': 'cinematic', '2': 'anime', '3': 'cartoon', '4': 'realistic'}
     style = styles.get(style_choice, 'cinematic')
 
-    # Цветокоррекция
-    print("\n🌈 Цветовая палитра:")
-    print("   1. Warm (тёплая)")
-    print("   2. Cool (холодная)")
-    print("   3. Vintage (винтажная)")
-    print("   4. Cyberpunk (киберпанк)")
+    # Color grading
+    print("\n🌈 Color Palette:")
+    print("   1. Warm")
+    print("   2. Cool")
+    print("   3. Vintage")
+    print("   4. Cyberpunk")
 
     color_choice = input("\n> ") or "1"
     colors = {'1': 'warm', '2': 'cool', '3': 'vintage', '4': 'cyberpunk'}
     color_grade = colors.get(color_choice, 'warm')
 
-    # Запуск
-    print("\n🚀 Запускаем генерацию...\n")
+    # Launch
+    print("\n🚀 Starting generation...\n")
 
     result = animator.create_story_animation(
         story_idea=story_idea,
@@ -194,13 +194,13 @@ def interactive_mode():
     )
 
     if result:
-        print("\n✅ Готово! Откройте видео:")
+        print("\n✅ Done! Open video:")
         print(f"   {result['video_path']}")
 
 
-# ==================== БЫСТРЫЕ ТЕСТЫ ====================
+# ==================== QUICK TESTS ====================
 def quick_test():
-    """Быстрый тест с предустановленными параметрами"""
+    """Quick test with preset parameters"""
     animator = AIStoryAnimator()
 
     test_stories = [
@@ -224,12 +224,12 @@ def quick_test():
         }
     ]
 
-    print("\n🎬 Доступные тесты:\n")
+    print("\n🎬 Available tests:\n")
     for i, story in enumerate(test_stories, 1):
         print(f"{i}. {story['idea']}")
-        print(f"   Стиль: {story['style']}, Сцен: {story['scenes']}\n")
+        print(f"   Style: {story['style']}, Scenes: {story['scenes']}\n")
 
-    choice = input("Выберите тест (1-3) или Enter для первого: ") or "1"
+    choice = input("Choose test (1-3) or Enter for first: ") or "1"
 
     try:
         idx = int(choice) - 1
@@ -257,10 +257,10 @@ if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("🎬 AI STORY ANIMATOR")
     print("=" * 70)
-    print("\nВыберите режим:")
-    print("  1. Интерактивный режим (вводите свою идею)")
-    print("  2. Быстрый тест (готовые примеры)")
-    print("  3. Выход")
+    print("\nChoose mode:")
+    print("  1. Interactive mode (enter your own idea)")
+    print("  2. Quick test (ready-made examples)")
+    print("  3. Exit")
 
     mode = input("\n> ") or "1"
 
@@ -269,5 +269,5 @@ if __name__ == "__main__":
     elif mode == "2":
         quick_test()
     else:
-        print("\n👋 До встречи!")
+        print("\n👋 See you later!")
         sys.exit(0)

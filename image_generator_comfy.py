@@ -15,38 +15,38 @@ class ComfyUIGenerator:
         self.server_address = server_address
         self.base_url = f"http://{server_address}"
 
-        # Папка для сохранения
+        # Save folder
         self.output_dir = Path("outputs/images")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Проверка подключения
+        # Connection check
         self._check_connection()
 
-        print("✅ ComfyUI Generator инициализирован")
-        print(f"🌐 Сервер: {self.base_url}")
-        print(f"📁 Изображения будут сохранены в: {self.output_dir}")
+        print("✅ ComfyUI Generator initialized")
+        print(f"🌐 Server: {self.base_url}")
+        print(f"📁 Images will be saved to: {self.output_dir}")
 
     def _check_connection(self):
-        """Проверка подключения к ComfyUI"""
+        """Check connection to ComfyUI"""
         try:
             response = requests.get(f"{self.base_url}/system_stats", timeout=5)
             if response.status_code == 200:
-                print("✅ ComfyUI сервер доступен")
+                print("✅ ComfyUI server is available")
                 return True
             else:
-                raise ConnectionError("ComfyUI не отвечает")
+                raise ConnectionError("ComfyUI is not responding")
         except Exception as e:
             raise ConnectionError(
-                f"❌ Не удалось подключиться к ComfyUI на {self.base_url}\n"
-                f"Убедитесь, что ComfyUI запущен!\n"
-                f"Ошибка: {e}"
+                f"❌ Failed to connect to ComfyUI at {self.base_url}\n"
+                f"Make sure ComfyUI is running!\n"
+                f"Error: {e}"
             )
 
     def create_workflow(self, prompt, negative_prompt="", width=1024, height=1024,
                         steps=20, cfg=8, seed=None):
         """
-        Создаёт workflow для генерации изображения
-        Структура соответствует вашему sdxl_basic.json
+        Creates workflow for image generation
+        Structure corresponds to your sdxl_basic.json
         """
         if seed is None:
             seed = int(time.time() * 1000) % 2 ** 32
@@ -114,7 +114,7 @@ class ComfyUIGenerator:
         return workflow
 
     def queue_prompt(self, workflow):
-        """Отправляет workflow на генерацию"""
+        """Sends workflow for generation"""
         p = {"prompt": workflow}
         data = json.dumps(p).encode('utf-8')
 
@@ -124,11 +124,11 @@ class ComfyUIGenerator:
             response = urllib.request.urlopen(req)
             return json.loads(response.read())
         except Exception as e:
-            print(f"❌ Ошибка отправки промпта: {e}")
+            print(f"❌ Error sending prompt: {e}")
             return None
 
     def get_image(self, filename, subfolder, folder_type):
-        """Получает сгенерированное изображение"""
+        """Gets generated image"""
         try:
             data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
             url_values = urllib.parse.urlencode(data)
@@ -137,11 +137,11 @@ class ComfyUIGenerator:
             response = urllib.request.urlopen(url)
             return response.read()
         except Exception as e:
-            print(f"❌ Ошибка получения изображения: {e}")
+            print(f"❌ Error getting image: {e}")
             return None
 
     def get_history(self, prompt_id):
-        """Получает историю выполнения промпта"""
+        """Gets prompt execution history"""
         try:
             response = urllib.request.urlopen(f"{self.base_url}/history/{prompt_id}")
             return json.loads(response.read())
@@ -149,7 +149,7 @@ class ComfyUIGenerator:
             return {}
 
     def wait_for_completion(self, prompt_id, timeout=300):
-        """Ждёт завершения генерации"""
+        """Waits for generation to complete"""
         start_time = time.time()
 
         while time.time() - start_time < timeout:
@@ -158,27 +158,27 @@ class ComfyUIGenerator:
             if prompt_id in history:
                 status = history[prompt_id].get('status', {})
 
-                # Проверка завершения
+                # Check completion
                 if status.get('completed', False):
                     return history[prompt_id]
 
-                # Проверка ошибок
+                # Check errors
                 if 'error' in status:
-                    raise Exception(f"Ошибка генерации: {status['error']}")
+                    raise Exception(f"Generation error: {status['error']}")
 
             time.sleep(1)
 
-        raise TimeoutError(f"Генерация не завершилась за {timeout} секунд")
+        raise TimeoutError(f"Generation did not complete within {timeout} seconds")
 
     def generate_image(self, prompt, negative_prompt="blurry, low quality, distorted",
                        width=1024, height=1024, steps=20, cfg=8, seed=None, filename=None):
         """
-        Генерирует изображение через ComfyUI
+        Generates image through ComfyUI
         """
-        print(f"\n🎨 Генерация изображения через ComfyUI...")
-        print(f"📝 Промпт: {prompt[:80]}...")
+        print(f"\n🎨 Generating image through ComfyUI...")
+        print(f"📝 Prompt: {prompt[:80]}...")
 
-        # Создаём workflow
+        # Create workflow
         workflow = self.create_workflow(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -189,7 +189,7 @@ class ComfyUIGenerator:
             seed=seed
         )
 
-        # Отправляем на генерацию
+        # Send for generation
         result = self.queue_prompt(workflow)
 
         if not result:
@@ -197,13 +197,13 @@ class ComfyUIGenerator:
 
         prompt_id = result['prompt_id']
         print(f"🆔 Prompt ID: {prompt_id}")
-        print("⏳ Ожидание генерации...")
+        print("⏳ Waiting for generation...")
 
         try:
-            # Ждём завершения
+            # Wait for completion
             history = self.wait_for_completion(prompt_id)
 
-            # Получаем результат
+            # Get result
             for node_id in history['outputs']:
                 node_output = history['outputs'][node_id]
 
@@ -216,7 +216,7 @@ class ComfyUIGenerator:
                         )
 
                         if image_data:
-                            # Сохраняем изображение
+                            # Save image
                             if filename is None:
                                 filename = f"comfy_gen_{int(time.time())}.png"
 
@@ -225,34 +225,34 @@ class ComfyUIGenerator:
                             with open(filepath, 'wb') as f:
                                 f.write(image_data)
 
-                            print(f"✅ Изображение сохранено: {filepath}")
+                            print(f"✅ Image saved: {filepath}")
                             return filepath
 
-            print("❌ Изображение не найдено в результатах")
+            print("❌ Image not found in results")
             return None
 
         except Exception as e:
-            print(f"❌ Ошибка во время генерации: {e}")
+            print(f"❌ Error during generation: {e}")
             return None
 
     def generate_scene_images(self, prompts_data, style="cinematic", project_name="story",
                               width=512, height=512, steps=20, cfg=7):
         """
-        Генерирует изображения для всех сцен
+        Generates images for all scenes
         """
-        print(f"\n🎬 Начало генерации {len(prompts_data)} изображений через ComfyUI...")
-        print(f"🎨 Стиль: {style}")
-        print(f"📐 Разрешение: {width}x{height}")
+        print(f"\n🎬 Starting generation of {len(prompts_data)} images through ComfyUI...")
+        print(f"🎨 Style: {style}")
+        print(f"📐 Resolution: {width}x{height}")
         print(f"⚙️  Steps: {steps}, CFG: {cfg}")
 
         generated_images = []
 
-        # Используем один seed для всех изображений (для consistency)
+        # Use one seed for all images (for consistency)
         base_seed = int(time.time() * 1000) % 2 ** 32
 
         for idx, prompt_info in enumerate(prompts_data, 1):
             print(f"\n{'=' * 60}")
-            print(f"Сцена {idx}/{len(prompts_data)}")
+            print(f"Scene {idx}/{len(prompts_data)}")
             print(f"{'=' * 60}")
 
             prompt = prompt_info.get("prompt", "")
@@ -261,7 +261,7 @@ class ComfyUIGenerator:
 
             filename = f"{project_name}_scene_{idx:02d}.png"
 
-            # Используем разные seeds для разнообразия, но близкие для consistency
+            # Use different seeds for variety, but close for consistency
             scene_seed = base_seed + idx
 
             filepath = self.generate_image(
@@ -282,27 +282,27 @@ class ComfyUIGenerator:
                     "prompt": prompt
                 })
 
-                print(f"✅ Сцена {idx} готова")
+                print(f"✅ Scene {idx} ready")
             else:
-                print(f"❌ Ошибка генерации сцены {idx}")
+                print(f"❌ Error generating scene {idx}")
 
         print(f"\n{'=' * 60}")
-        print(f"✅ Генерация завершена!")
-        print(f"📊 Успешно: {len(generated_images)}/{len(prompts_data)}")
+        print(f"✅ Generation complete!")
+        print(f"📊 Successful: {len(generated_images)}/{len(prompts_data)}")
         print(f"{'=' * 60}\n")
 
         return generated_images
 
 
-# Тестирование
+# Testing
 if __name__ == "__main__":
-    print("🧪 Тестирование ComfyUI генератора...\n")
+    print("🧪 Testing ComfyUI generator...\n")
 
     try:
-        # Инициализация
+        # Initialization
         generator = ComfyUIGenerator()
 
-        # Тестовый промпт
+        # Test prompt
         test_prompt = (
             "A lonely robot standing in a post-apocalyptic city ruins, "
             "dramatic sunset, cinematic lighting, highly detailed, masterpiece, 8k"
@@ -310,7 +310,7 @@ if __name__ == "__main__":
 
         test_negative = "blurry, low quality, distorted, ugly, bad anatomy"
 
-        # Генерация
+        # Generation
         filepath = generator.generate_image(
             prompt=test_prompt,
             negative_prompt=test_negative,
@@ -322,17 +322,17 @@ if __name__ == "__main__":
         )
 
         if filepath:
-            print(f"\n✅ ТЕСТ ПРОЙДЕН!")
-            print(f"📁 Изображение: {filepath}")
-            print(f"\n💡 Проверьте также ComfyUI/output/ - там тоже будет копия")
+            print(f"\n✅ TEST PASSED!")
+            print(f"📁 Image: {filepath}")
+            print(f"\n💡 Also check ComfyUI/output/ - there will be a copy there too")
         else:
-            print("\n❌ Генерация не удалась")
+            print("\n❌ Generation failed")
 
     except ConnectionError as e:
         print(f"\n{e}")
-        print("\n💡 Запустите ComfyUI: run_nvidia_gpu.bat")
+        print("\n💡 Start ComfyUI: run_nvidia_gpu.bat")
     except Exception as e:
-        print(f"\n❌ Ошибка: {e}")
+        print(f"\n❌ Error: {e}")
         import traceback
 
         traceback.print_exc()

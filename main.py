@@ -15,14 +15,14 @@ from utils import (
     logger
 )
 
-# Глобальные переменные для компонентов
+# Global variables for components
 llm_gen = None
 img_gen = None
 video_gen = None
 
 
 def initialize_components():
-    """Ленивая инициализация компонентов"""
+    """Lazy initialization of components"""
     global llm_gen, img_gen, video_gen
 
     if llm_gen is None:
@@ -50,14 +50,14 @@ def generate_story_animation(
         progress=gr.Progress()
 ):
     """
-    Главная функция генерации с улучшенной обработкой ошибок
+    Main generation function with improved error handling
     """
     try:
-        # Логирование начала
+        # Logging start
         logger.info(f"Starting generation: {story_idea[:50]}...")
         logger.info(f"Parameters: scenes={num_scenes}, style={art_style}")
 
-        # Создаём проект
+        # Create project
         project_id = project_manager.create_project(
             story_idea=story_idea,
             parameters={
@@ -71,7 +71,7 @@ def generate_story_animation(
             }
         )
 
-        # Инициализация
+        # Initialization
         progress(0, desc="🎬 Initializing components...")
         llm, img_gen_inst, video_gen_inst = initialize_components()
 
@@ -79,11 +79,11 @@ def generate_story_animation(
         current_step = 0
         status_updates = []
 
-        # Оценка времени
+        # Time estimation
         estimated_time = estimate_generation_time(num_scenes)
         status_updates.append(f"⏱️ Estimated time: ~{estimated_time}")
 
-        # ========== ЭТАП 1: LLM ==========
+        # ========== STAGE 1: LLM ==========
         try:
             progress(current_step / total_steps, desc="📝 Generating story via LLM...")
             status_updates.append("📝 Generating story scenario...")
@@ -99,7 +99,7 @@ def generate_story_animation(
             status_updates.append(f"✅ Story ready: '{story_title}'")
             current_step += 1
 
-            # Обновляем проект
+            # Update project
             project_manager.update_project(project_id, {
                 "story_title": story_title,
                 "scenes": scenes,
@@ -111,7 +111,7 @@ def generate_story_animation(
             error_msg = ErrorHandler.handle_llm_error(e)
             return None, None, error_msg, json.dumps({"error": str(e)}, indent=2)
 
-        # ========== ЭТАП 2: Images ==========
+        # ========== STAGE 2: Images ==========
         try:
             image_prompts = llm.generate_image_prompts(story_data, style=art_style)
             generated_images = []
@@ -151,9 +151,9 @@ def generate_story_animation(
 
                 current_step += 1
 
-                # Обновляем статус проекта
+                # Update project status
                 yield (
-                    image_files,  # Показываем изображения по мере генерации
+                    image_files,  # Show images as they are generated
                     None,
                     "\n".join(status_updates),
                     json.dumps({"progress": f"{idx}/{num_scenes}"}, indent=2)
@@ -172,7 +172,7 @@ def generate_story_animation(
             error_msg = ErrorHandler.handle_comfy_error(e)
             return None, None, error_msg, json.dumps({"error": str(e)}, indent=2)
 
-        # ========== ЭТАП 3: Video ==========
+        # ========== STAGE 3: Video ==========
         try:
             progress(current_step / total_steps, desc="🎥 Creating video...")
             status_updates.append("🎥 Creating cinematic video...")
@@ -189,13 +189,13 @@ def generate_story_animation(
 
             status_updates.append(f"✅ Video ready: {video_path}")
 
-            # Финальное обновление проекта
+            # Final project update
             project_manager.update_project(project_id, {
                 "video_path": str(video_path),
                 "status": "completed"
             })
 
-            # Добавляем в историю
+            # Add to history
             project_manager.add_to_history({
                 "project_id": project_id,
                 "title": story_title,
@@ -211,7 +211,7 @@ def generate_story_animation(
             error_msg = ErrorHandler.handle_video_error(e)
             return image_files, None, error_msg, json.dumps({"error": str(e)}, indent=2)
 
-        # ========== Результат ==========
+        # ========== Result ==========
         progress(1.0, desc="✅ Complete!")
 
         result_json = {
@@ -234,67 +234,65 @@ def generate_story_animation(
         )
 
     except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
-        import traceback
-        error_msg = f"❌ Unexpected error:\n{str(e)}\n\n{traceback.format_exc()}"
+        logger.error(f"Critical error: {e}")
+        error_msg = f"❌ Critical error: {str(e)}\n\nPlease check the logs."
         return None, None, error_msg, json.dumps({"error": str(e)}, indent=2)
 
 
 def create_ui():
-    """Создание Gradio интерфейса"""
-
+    """
+    Creates Gradio interface
+    """
     with gr.Blocks(
-            theme=gr.themes.Soft(
-                primary_hue="blue",
-                secondary_hue="purple",
-            ),
             title="AI Story Animator",
+            theme=gr.themes.Soft(),
             css="""
-        .container {max-width: 1400px; margin: auto;}
-        .header {text-align: center; padding: 20px;}
-        .gallery-container {min-height: 400px;}
-        """
+            .main-header { text-align: center; margin-bottom: 2rem; }
+            .generate-btn { font-size: 1.2rem !important; }
+            """
     ) as app:
+
         # Header
         gr.Markdown(
             """
             # 🎬 AI Story Animator
-            ### Превратите вашу идею в кинематографическую анимацию
-
-            **Powered by:** LM Studio (LLM) + ComfyUI (Stable Diffusion) + OpenCV
-            """
+            ### Transform your ideas into animated stories with AI
+            
+            Generate cinematic animated videos from text descriptions using LLM + ComfyUI
+            """,
+            elem_classes="main-header"
         )
 
         with gr.Row():
-            # ========== LEFT COLUMN: Inputs ==========
+            # ========== LEFT COLUMN: Settings ==========
             with gr.Column(scale=1):
-                gr.Markdown("## ⚙️ Настройки")
+                gr.Markdown("## ⚙️ Settings")
 
-                # Основные параметры
+                # Story
                 with gr.Group():
-                    gr.Markdown("### 📝 История")
+                    gr.Markdown("### 📝 Story")
                     story_input = gr.Textbox(
-                        label="💡 Идея вашей истории",
-                        placeholder="Например: A lonely robot discovers a magical garden in a post-apocalyptic city...",
+                        label="💡 Your Story Idea",
+                        placeholder="For example: A lonely robot discovers a magical garden in a post-apocalyptic city...",
                         lines=3,
                         value="A lone astronaut discovers an ancient alien temple on Mars"
                     )
 
                     num_scenes = gr.Slider(
-                        label="🎬 Количество сцен",
+                        label="🎬 Number of Scenes",
                         minimum=2,
                         maximum=10,
                         step=1,
                         value=4,
-                        info="Больше сцен = дольше генерация"
+                        info="More scenes = longer generation"
                     )
 
-                # Художественный стиль
+                # Art Style
                 with gr.Group():
-                    gr.Markdown("### 🎨 Визуальный стиль")
+                    gr.Markdown("### 🎨 Visual Style")
 
                     art_style = gr.Radio(
-                        label="Художественный стиль",
+                        label="Art Style",
                         choices=[
                             "cinematic",
                             "anime",
@@ -302,11 +300,11 @@ def create_ui():
                             "realistic"
                         ],
                         value="cinematic",
-                        info="Стиль визуализации сцен"
+                        info="Scene visualization style"
                     )
 
                     color_grade = gr.Radio(
-                        label="🌈 Цветовая палитра",
+                        label="🌈 Color Palette",
                         choices=[
                             "warm",
                             "cool",
@@ -314,15 +312,15 @@ def create_ui():
                             "cyberpunk"
                         ],
                         value="warm",
-                        info="Цветокоррекция для видео"
+                        info="Color grading for video"
                     )
 
-                # Настройки видео
+                # Video Settings
                 with gr.Group():
-                    gr.Markdown("### 🎥 Параметры видео")
+                    gr.Markdown("### 🎥 Video Parameters")
 
                     scene_duration = gr.Slider(
-                        label="⏱️ Длительность сцены (сек)",
+                        label="⏱️ Scene duration (seconds)",
                         minimum=2.0,
                         maximum=8.0,
                         step=0.5,
@@ -330,13 +328,13 @@ def create_ui():
                     )
 
                     use_ken_burns = gr.Checkbox(
-                        label="✨ Ken Burns эффект (zoom & pan)",
+                        label="✨ Ken Burns effect (zoom & pan)",
                         value=True,
-                        info="Динамическое движение камеры"
+                        info="Dynamic camera movement"
                     )
 
                     transition_type = gr.Radio(
-                        label="🔄 Тип перехода",
+                        label="🔄 Transition Type",
                         choices=[
                             "crossfade",
                             "zoom_blur",
@@ -345,10 +343,10 @@ def create_ui():
                         value="zoom_blur"
                     )
 
-                # Продвинутые настройки (скрытые)
-                with gr.Accordion("🔧 Продвинутые настройки", open=False):
+                # Advanced Settings (hidden)
+                with gr.Accordion("🔧 Advanced Settings", open=False):
                     image_width = gr.Slider(
-                        label="Ширина изображения",
+                        label="Image Width",
                         minimum=256,
                         maximum=1024,
                         step=128,
@@ -356,7 +354,7 @@ def create_ui():
                     )
 
                     image_height = gr.Slider(
-                        label="Высота изображения",
+                        label="Image Height",
                         minimum=256,
                         maximum=1024,
                         step=128,
@@ -364,12 +362,12 @@ def create_ui():
                     )
 
                     sd_steps = gr.Slider(
-                        label="SD Steps (качество)",
+                        label="SD Steps (quality)",
                         minimum=10,
                         maximum=30,
                         step=5,
                         value=15,
-                        info="Больше = лучше качество, но медленнее"
+                        info="More = better quality, but slower"
                     )
 
                     sd_cfg = gr.Slider(
@@ -378,34 +376,34 @@ def create_ui():
                         maximum=15.0,
                         step=0.5,
                         value=7.0,
-                        info="Насколько точно следовать промпту"
+                        info="How closely to follow the prompt"
                     )
 
-                # Кнопка генерации
+                # Generate button
                 generate_btn = gr.Button(
-                    "🚀 Создать анимацию",
+                    "🚀 Create Animation",
                     variant="primary",
                     size="lg"
                 )
 
             # ========== RIGHT COLUMN: Outputs ==========
             with gr.Column(scale=2):
-                gr.Markdown("## 📊 Результаты")
+                gr.Markdown("## 📊 Results")
 
-                # Статус
+                # Status
                 status_output = gr.Textbox(
-                    label="📝 Статус генерации",
+                    label="📝 Generation Status",
                     lines=8,
                     max_lines=15,
                     interactive=False
                 )
 
-                # Вкладки с результатами
+                # Tabs with results
                 with gr.Tabs():
-                    # Вкладка: Изображения
-                    with gr.Tab("🖼️ Изображения"):
+                    # Tab: Images
+                    with gr.Tab("🖼️ Images"):
                         image_gallery = gr.Gallery(
-                            label="Сгенерированные сцены",
+                            label="Generated Scenes",
                             show_label=True,
                             columns=3,
                             rows=2,
@@ -413,29 +411,29 @@ def create_ui():
                             object_fit="contain"
                         )
 
-                    # Вкладка: Видео
-                    with gr.Tab("🎥 Видео"):
+                    # Tab: Video
+                    with gr.Tab("🎥 Video"):
                         video_output = gr.Video(
-                            label="Финальная анимация",
+                            label="Final Animation",
                             show_label=True,
                             height=500
                         )
 
                         video_download = gr.File(
-                            label="📥 Скачать видео",
+                            label="📥 Download Video",
                             interactive=False
                         )
 
-                    # Вкладка: JSON данные
-                    with gr.Tab("📋 Данные"):
+                    # Tab: JSON data
+                    with gr.Tab("📋 Data"):
                         json_output = gr.Code(
-                            label="Метаданные (JSON)",
+                            label="Metadata (JSON)",
                             language="json",
                             lines=15
                         )
 
-        # Примеры
-        gr.Markdown("## 💡 Примеры идей")
+        # Examples
+        gr.Markdown("## 💡 Example Ideas")
         gr.Examples(
             examples=[
                 ["A robot gardener tends to the last flowers on Earth", 3, "cinematic", "warm"],
@@ -446,17 +444,17 @@ def create_ui():
             inputs=[story_input, num_scenes, art_style, color_grade],
         )
 
-        # Подвал
+        # Footer
         gr.Markdown(
             """
             ---
-            **📌 Совет:** Для лучших результатов используйте детальные описания и 3-5 сцен.
+            **📌 Tip:** For best results, use detailed descriptions and 3-5 scenes.
 
-            **⚡ Время генерации:** ~2-5 минут в зависимости от количества сцен.
+            **⚡ Generation time:** ~2-5 minutes depending on number of scenes.
             """
         )
 
-        # Обработчик кнопки
+        # Button handler
         generate_btn.click(
             fn=generate_story_animation,
             inputs=[
@@ -488,8 +486,8 @@ if __name__ == "__main__":
     print("🎬 AI Story Animator - Web Interface")
     print("=" * 70 + "\n")
 
-    print("🚀 Запуск Gradio интерфейса...")
-    print("📍 Убедитесь, что запущены:")
+    print("🚀 Launching Gradio interface...")
+    print("📍 Make sure these are running:")
     print("   - LM Studio (http://localhost:1234)")
     print("   - ComfyUI (http://localhost:8188)")
     print("\n")
@@ -499,7 +497,7 @@ if __name__ == "__main__":
     app.launch(
         server_name="127.0.0.1",
         server_port=7860,
-        share=False,  # Установите True для публичной ссылки
+        share=False,  # Set True for public link
         show_error=True,
         quiet=False
     )

@@ -8,35 +8,35 @@ import random
 class VideoCreator:
     def __init__(self, fps=24, transition_duration=1.0):
         """
-        Инициализация создателя видео с продвинутыми эффектами
+        Initialize video creator with advanced effects
 
         Args:
-            fps (int): Кадров в секунду (24-30 для кинематографичности)
-            transition_duration (float): Длительность перехода в секундах
+            fps (int): Frames per second (24-30 for cinematic feel)
+            transition_duration (float): Transition duration in seconds
         """
         self.fps = fps
         self.transition_duration = transition_duration
         self.transition_frames = int(fps * transition_duration)
 
-        # Папка для сохранения
+        # Save folder
         self.output_dir = Path("outputs/videos")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        print("✅ VideoCreator инициализирован")
+        print("✅ VideoCreator initialized")
         print(f"🎬 FPS: {self.fps}")
-        print(f"⏱️  Длительность перехода: {self.transition_duration}s")
-        print(f"📁 Видео будут сохранены в: {self.output_dir}")
+        print(f"⏱️  Transition duration: {self.transition_duration}s")
+        print(f"📁 Videos will be saved to: {self.output_dir}")
 
     def load_image(self, image_path):
-        """Загружает и проверяет изображение"""
+        """Loads and checks image"""
         img = cv2.imread(str(image_path))
         if img is None:
-            raise ValueError(f"Не удалось загрузить изображение: {image_path}")
+            raise ValueError(f"Failed to load image: {image_path}")
         return img
 
     def resize_to_match(self, images, target_size=None):
         """
-        Приводит все изображения к одному размеру
+        Resizes all images to same size
         """
         if not images:
             return images
@@ -46,7 +46,7 @@ class VideoCreator:
         else:
             target_width, target_height = target_size
 
-        print(f"📐 Целевое разрешение: {target_width}x{target_height}")
+        print(f"📐 Target resolution: {target_width}x{target_height}")
 
         resized = []
         for img in images:
@@ -60,13 +60,13 @@ class VideoCreator:
     def apply_ken_burns(self, img, num_frames, zoom_direction='in',
                         zoom_amount=1.2, pan_direction=None):
         """
-        Эффект Ken Burns - медленный zoom и pan
+        Ken Burns effect - slow zoom and pan
 
         Args:
-            img: Исходное изображение
-            num_frames: Количество кадров
-            zoom_direction: 'in' (приближение) или 'out' (удаление)
-            zoom_amount: Коэффициент увеличения (1.0-1.5)
+            img: Source image
+            num_frames: Number of frames
+            zoom_direction: 'in' (zoom in) or 'out' (zoom out)
+            zoom_amount: Zoom factor (1.0-1.5)
             pan_direction: None, 'left', 'right', 'up', 'down'
         """
         height, width = img.shape[:2]
@@ -75,24 +75,24 @@ class VideoCreator:
         for i in range(num_frames):
             t = i / (num_frames - 1) if num_frames > 1 else 0
 
-            # Плавная интерполяция (ease-in-out)
+            # Smooth interpolation (ease-in-out)
             t_smooth = t * t * (3 - 2 * t)
 
-            # Вычисляем zoom
+            # Calculate zoom
             if zoom_direction == 'in':
                 scale = 1.0 + (zoom_amount - 1.0) * t_smooth
             else:  # out
                 scale = zoom_amount - (zoom_amount - 1.0) * t_smooth
 
-            # Новые размеры
+            # New dimensions
             new_width = int(width * scale)
             new_height = int(height * scale)
 
-            # Увеличиваем изображение
+            # Resize image
             resized = cv2.resize(img, (new_width, new_height),
                                  interpolation=cv2.INTER_LANCZOS4)
 
-            # Вычисляем pan offset
+            # Calculate pan offset
             pan_x = 0
             pan_y = 0
 
@@ -105,14 +105,14 @@ class VideoCreator:
             elif pan_direction == 'down':
                 pan_y = int((new_height - height) * (1 - t_smooth))
             else:
-                # Центрирование
+                # Center
                 pan_x = (new_width - width) // 2
                 pan_y = (new_height - height) // 2
 
-            # Обрезаем кадр
+            # Crop frame
             cropped = resized[pan_y:pan_y + height, pan_x:pan_x + width]
 
-            # Проверка размера
+            # Size check
             if cropped.shape[:2] != (height, width):
                 cropped = cv2.resize(cropped, (width, height))
 
@@ -122,12 +122,12 @@ class VideoCreator:
 
     def apply_parallax_effect(self, img, num_frames, depth_map=None):
         """
-        Эффект параллакса - имитация глубины
+        Parallax effect - depth simulation
         """
         height, width = img.shape[:2]
         frames = []
 
-        # Простой depth map (центр ближе, края дальше)
+        # Simple depth map (center closer, edges farther)
         if depth_map is None:
             y, x = np.ogrid[:height, :width]
             center_y, center_x = height // 2, width // 2
@@ -138,10 +138,10 @@ class VideoCreator:
             t = i / (num_frames - 1) if num_frames > 1 else 0
             t_smooth = t * t * (3 - 2 * t)
 
-            # Смещение на основе глубины
+            # Offset based on depth
             shift_amount = 10 * t_smooth
 
-            # Создаём карту смещения
+            # Create displacement map
             map_x = np.zeros((height, width), dtype=np.float32)
             map_y = np.zeros((height, width), dtype=np.float32)
 
@@ -151,7 +151,7 @@ class VideoCreator:
                     map_x[y, x] = x + offset
                     map_y[y, x] = y
 
-            # Применяем remap
+            # Apply remap
             frame = cv2.remap(img, map_x, map_y, cv2.INTER_LINEAR,
                               borderMode=cv2.BORDER_REFLECT)
             frames.append(frame)
@@ -160,7 +160,7 @@ class VideoCreator:
 
     def apply_cinematic_color_grade(self, img, style='warm'):
         """
-        Применяет кинематографическую цветокоррекцию
+        Applies cinematic color grading
 
         Args:
             style: 'warm', 'cool', 'vintage', 'cyberpunk'
@@ -168,29 +168,29 @@ class VideoCreator:
         img_float = img.astype(np.float32) / 255.0
 
         if style == 'warm':
-            # Тёплые тона (оранжевый/жёлтый)
-            img_float[:, :, 0] *= 0.9  # Меньше синего
-            img_float[:, :, 1] *= 1.05  # Больше зелёного
-            img_float[:, :, 2] *= 1.1  # Больше красного
+            # Warm tones (orange/yellow)
+            img_float[:, :, 0] *= 0.9  # Less blue
+            img_float[:, :, 1] *= 1.05  # More green
+            img_float[:, :, 2] *= 1.1  # More red
 
         elif style == 'cool':
-            # Холодные тона (синий/голубой)
-            img_float[:, :, 0] *= 1.2  # Больше синего
+            # Cool tones (blue/cyan)
+            img_float[:, :, 0] *= 1.2  # More blue
             img_float[:, :, 1] *= 1.0
-            img_float[:, :, 2] *= 0.9  # Меньше красного
+            img_float[:, :, 2] *= 0.9  # Less red
 
         elif style == 'vintage':
-            # Винтажный вид (выцветшие цвета)
+            # Vintage look (faded colors)
             img_float = img_float * 0.8 + 0.2
             img_float[:, :, 1] *= 0.95
 
         elif style == 'cyberpunk':
-            # Киберпанк (неон, контраст)
+            # Cyberpunk (neon, contrast)
             img_float = np.power(img_float, 1.2)
             img_float[:, :, 0] *= 1.3
             img_float[:, :, 2] *= 1.2
 
-        # Небольшое виньетирование
+        # Slight vignette
         height, width = img.shape[:2]
         y, x = np.ogrid[:height, :width]
         center_y, center_x = height // 2, width // 2
@@ -201,13 +201,13 @@ class VideoCreator:
         for c in range(3):
             img_float[:, :, c] *= vignette
 
-        # Обратно в uint8
+        # Back to uint8
         img_float = np.clip(img_float, 0, 1)
         return (img_float * 255).astype(np.uint8)
 
     def create_dynamic_transition(self, img1, img2, num_frames, transition_type='crossfade'):
         """
-        Продвинутые переходы между кадрами
+        Advanced transitions between frames
 
         Types: 'crossfade', 'wipe_left', 'wipe_right', 'zoom_blur', 'rotate'
         """
@@ -233,7 +233,7 @@ class VideoCreator:
             for i in range(num_frames):
                 t = i / (num_frames - 1) if num_frames > 1 else 1
 
-                # Blur первого изображения
+                # Blur first image
                 blur_amount = int(15 * (1 - abs(t - 0.5) * 2))
                 if blur_amount > 0 and blur_amount % 2 == 0:
                     blur_amount += 1
@@ -254,30 +254,30 @@ class VideoCreator:
                      use_color_grade=True, color_style='warm',
                      transition_type='zoom_blur'):
         """
-        Создаёт кинематографическое видео с эффектами
+        Creates cinematic video with effects
         """
-        print(f"\n🎬 Создание кинематографического видео из {len(image_paths)} изображений...")
-        print(f"⏱️  Длительность сцены: {scene_duration}s")
+        print(f"\n🎬 Creating cinematic video from {len(image_paths)} images...")
+        print(f"⏱️  Scene duration: {scene_duration}s")
         print(f"🎨 Ken Burns: {'✅' if use_ken_burns else '❌'}")
         print(f"🌈 Color Grade: {color_style if use_color_grade else '❌'}")
-        print(f"🔄 Переходы: {transition_type}")
+        print(f"🔄 Transitions: {transition_type}")
 
-        # Загрузка изображений
+        # Loading images
         images = []
         for i, path in enumerate(image_paths, 1):
-            print(f"📸 Загрузка {i}/{len(image_paths)}: {Path(path).name}")
+            print(f"📸 Loading {i}/{len(image_paths)}: {Path(path).name}")
             img = self.load_image(path)
 
-            # Цветокоррекция
+            # Color grading
             if use_color_grade:
                 img = self.apply_cinematic_color_grade(img, style=color_style)
 
             images.append(img)
 
-        # Приведение к размеру
+        # Resize to match
         images = self.resize_to_match(images)
 
-        # Подготовка видео
+        # Prepare video
         height, width = images[0].shape[:2]
         output_path = self.output_dir / output_filename
 
@@ -289,7 +289,7 @@ class VideoCreator:
         total_frames = 0
         scene_frames = int(self.fps * scene_duration)
 
-        # Случайные направления для Ken Burns
+        # Random directions for Ken Burns
         kb_directions = [
             ('in', 'left'),
             ('in', 'right'),
@@ -298,12 +298,12 @@ class VideoCreator:
             ('in', 'down')
         ]
 
-        print(f"\n🎞️  Генерация кадров с эффектами...")
+        print(f"\n🎞️  Generating frames with effects...")
 
         for i, img in enumerate(images):
-            print(f"  🎬 Сцена {i + 1}:")
+            print(f"  🎬 Scene {i + 1}:")
 
-            # Ken Burns эффект
+            # Ken Burns effect
             if use_ken_burns:
                 zoom_dir, pan_dir = random.choice(kb_directions)
                 print(f"    - Ken Burns: zoom={zoom_dir}, pan={pan_dir}")
@@ -316,14 +316,14 @@ class VideoCreator:
             else:
                 scene_frames_list = [img] * scene_frames
 
-            # Запись кадров сцены
+            # Write scene frames
             for frame in scene_frames_list:
                 video_writer.write(frame)
                 total_frames += 1
 
-            # Переход
+            # Transition
             if i < len(images) - 1:
-                print(f"    - Переход {i + 1}→{i + 2}: {transition_type}")
+                print(f"    - Transition {i + 1}→{i + 2}: {transition_type}")
                 transition_frames = self.create_dynamic_transition(
                     img, images[i + 1], self.transition_frames, transition_type
                 )
@@ -337,39 +337,39 @@ class VideoCreator:
         duration = total_frames / self.fps
 
         print(f"\n{'=' * 60}")
-        print(f"✅ Кинематографическое видео создано!")
+        print(f"✅ Cinematic video created!")
         print(f"{'=' * 60}")
-        print(f"📁 Файл: {output_path}")
-        print(f"📊 Статистика:")
-        print(f"  - Разрешение: {width}x{height}")
-        print(f"  - Кадров: {total_frames}")
-        print(f"  - Длительность: {duration:.2f}s")
+        print(f"📁 File: {output_path}")
+        print(f"📊 Statistics:")
+        print(f"  - Resolution: {width}x{height}")
+        print(f"  - Frames: {total_frames}")
+        print(f"  - Duration: {duration:.2f}s")
         print(f"  - FPS: {self.fps}")
         print(f"{'=' * 60}\n")
 
         return output_path
 
 
-# Тестирование
+# Testing
 if __name__ == "__main__":
-    print("🎥 Тестирование кинематографического VideoCreator...\n")
+    print("🎥 Testing cinematic VideoCreator...\n")
 
-    # Инициализация (увеличили FPS для плавности)
+    # Initialization (increased FPS for smoothness)
     video_creator = VideoCreator(fps=24, transition_duration=1.0)
 
     images_dir = Path("outputs/images")
 
     if not images_dir.exists():
-        print("❌ Папка outputs/images не найдена")
+        print("❌ Folder outputs/images not found")
     else:
         image_files = sorted(images_dir.glob("mars_temple_scene_*.png"))
 
         if not image_files:
-            print("❌ Изображения не найдены")
+            print("❌ Images not found")
         else:
-            print(f"✅ Найдено {len(image_files)} изображений\n")
+            print(f"✅ Found {len(image_files)} images\n")
 
-            # Создаём кинематографическое видео
+            # Create cinematic video
             video_path = video_creator.create_video(
                 image_paths=image_files,
                 output_filename="cinematic_animation.mp4",
@@ -380,5 +380,5 @@ if __name__ == "__main__":
                 transition_type='zoom_blur'  # 'crossfade', 'zoom_blur', 'wipe_left'
             )
 
-            print(f"🎉 Готово!")
-            print(f"📺 Откройте: {video_path}")
+            print(f"🎉 Done!")
+            print(f"📺 Open: {video_path}")

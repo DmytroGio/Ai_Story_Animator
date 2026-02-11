@@ -17,14 +17,14 @@ class LLMGenerator:
 
     def generate_story_scenes(self, user_idea, num_scenes=5):
         """
-        Генерирует сценарий с описанием сцен для анимации
+        Generates story script with scene descriptions for animation
 
         Args:
-            user_idea (str): Идея истории от пользователя
-            num_scenes (int): Количество сцен для генерации
+            user_idea (str): Story idea from user
+            num_scenes (int): Number of scenes to generate
 
         Returns:
-            list: Список словарей с описанием каждой сцены
+            list: List of dictionaries with each scene description
         """
 
         prompt = f"""You are a creative AI that generates visual story scenes for animation.
@@ -67,28 +67,28 @@ Generate the JSON response now:"""
 
             response_text = completion.choices[0].message.content.strip()
 
-            # Попытка извлечь JSON из ответа
+            # Attempt to extract JSON from response
             response_text = self._extract_json(response_text)
 
-            # Парсинг JSON
+            # Parse JSON
             story_data = json.loads(response_text)
 
-            print(f"✅ Сгенерирован сценарий: {story_data.get('title', 'Untitled')}")
-            print(f"📝 Количество сцен: {len(story_data.get('scenes', []))}")
+            print(f"✅ Script generated: {story_data.get('title', 'Untitled')}")
+            print(f"📝 Number of scenes: {len(story_data.get('scenes', []))}")
 
             return story_data
 
         except json.JSONDecodeError as e:
-            print(f"❌ Ошибка парсинга JSON: {e}")
-            print(f"Ответ модели:\n{response_text}")
+            print(f"❌ JSON parsing error: {e}")
+            print(f"Model response:\n{response_text}")
             return None
         except Exception as e:
-            print(f"❌ Ошибка генерации: {e}")
+            print(f"❌ Generation error: {e}")
             return None
 
     def _extract_json(self, text):
-        """Извлекает JSON из текста (убирает markdown разметку)"""
-        # Убираем markdown code blocks
+        """Extracts JSON from text (removes markdown formatting)"""
+        # Remove markdown code blocks
         if "```json" in text:
             text = text.split("```json")[1].split("```")[0]
         elif "```" in text:
@@ -98,12 +98,12 @@ Generate the JSON response now:"""
 
     def generate_image_prompts(self, story_data, style="cinematic"):
         """
-        Конвертирует сцены в промпты для Stable Diffusion
-        Использует улучшенные предустановки стилей
+        Converts scenes to Stable Diffusion prompts
+        Uses enhanced style presets
         """
         from utils import StylePresets
 
-        # Получаем предустановку стиля
+        # Get style preset
         style_preset = StylePresets.get_style(style)
         style_suffix = style_preset['sd_suffix']
 
@@ -111,11 +111,11 @@ Generate the JSON response now:"""
         scenes = story_data.get("scenes", [])
 
         for scene in scenes:
-            # Создаём промпт для Stable Diffusion
+            # Create prompt for Stable Diffusion
             base_description = scene.get("description", "")
             mood = scene.get("mood", "")
 
-            # Формируем полный промпт
+            # Form full prompt
             full_prompt = f"{base_description}, {mood} mood, {style_suffix}"
 
             prompts.append({
@@ -127,29 +127,29 @@ Generate the JSON response now:"""
         return prompts
 
 
-# Тестирование
+# Testing
 if __name__ == "__main__":
-    print("🎬 Тестирование генератора сценариев...\n")
+    print("🎬 Testing script generator...\n")
 
     llm = LLMGenerator()
 
-    # Тестовая идея
+    # Test idea
     test_idea = "A lonely robot discovers a small plant growing in a post-apocalyptic city"
 
-    # Генерация сценария
+    # Generate script
     story = llm.generate_story_scenes(test_idea, num_scenes=5)
 
     if story:
-        print(f"\n📖 Название: {story.get('title')}\n")
+        print(f"\n📖 Title: {story.get('title')}\n")
 
-        # Вывод сцен
+        # Output scenes
         for scene in story.get("scenes", []):
-            print(f"Сцена {scene['scene_number']}:")
+            print(f"Scene {scene['scene_number']}:")
             print(f"  {scene['description']}")
-            print(f"  Настроение: {scene['mood']}\n")
+            print(f"  Mood: {scene['mood']}\n")
 
-        # Генерация промптов для изображений
-        print("\n🎨 Промпты для Stable Diffusion:\n")
+        # Generate prompts for images
+        print("\n🎨 Prompts for Stable Diffusion:\n")
         image_prompts = llm.generate_image_prompts(story, style="cinematic")
 
         for idx, prompt_data in enumerate(image_prompts, 1):
